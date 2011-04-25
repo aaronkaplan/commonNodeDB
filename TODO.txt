@@ -1,0 +1,18 @@
+
+
+* make the whole DB multi-tenant capable (i.e. have multiple small wireless community networks in the same country use the same DB setup)
+
+* needed info for freq planning: 
+   - location (lat/lon/height),
+   - who is master, who is slave? (in case of PtP or PtMP links)
+   - gain (dB)
+   - horizontal/vertical 
+   - txpower 
+   - direction (azimuth/inclination), 
+   - average noise level
+
+* make the zone/network concept clearer in the DB
+
+* remove logrecords tables. Not needed. This should stay in RRD or similar. It would be overkill to have it here.
+
+
