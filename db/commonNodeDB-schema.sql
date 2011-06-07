@@ -155,7 +155,8 @@ CREATE TABLE antennas (
     radio_id bigint NOT NULL,
     polarization character varying, -- horizontal, vertical, circular right hand, circular left hand
     azimuth float NOT NULL,
-    inclination float 
+    inclination float ,
+	height double precision
 )
 INHERITS (standardtable);
 
