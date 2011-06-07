@@ -131,7 +131,6 @@ CREATE TABLE addresses (
     zip character varying NOT NULL,
     street character varying NOT NULL,
     "position" gps NOT NULL,
-	height double precision
 )
 INHERITS (standardtable);
 
@@ -156,7 +155,7 @@ CREATE TABLE antennas (
     polarization character varying, -- horizontal, vertical, circular right hand, circular left hand
     azimuth float NOT NULL,
     inclination float ,
-	height double precision
+	height double precision -- above sea level
 )
 INHERITS (standardtable);
 
