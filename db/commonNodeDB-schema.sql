@@ -115,7 +115,6 @@ ALTER SEQUENCE standardtable_id_seq OWNED BY standardtable.id;
 CREATE TYPE gps AS (
 	latitude double precision,
 	longitude double precision,
-	height double precision
 );
 
 
@@ -131,7 +130,8 @@ CREATE TABLE addresses (
     city character varying NOT NULL,
     zip character varying NOT NULL,
     street character varying NOT NULL,
-    "position" gps NOT NULL
+    "position" gps NOT NULL,
+	height double precision
 )
 INHERITS (standardtable);
 
@@ -288,7 +288,7 @@ CREATE TABLE devicetypes (
     model character varying NOT NULL,
     revision character varying NOT NULL,
     manufacturer_id bigint NOT NULL,
-	mac_addr_prefix mac
+	mac_addr_prefix macaddr	-- XXX needed?
 )
 INHERITS (standardtable);
 
