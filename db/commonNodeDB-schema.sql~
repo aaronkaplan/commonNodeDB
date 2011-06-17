@@ -526,7 +526,7 @@ CREATE TABLE person (
     has_confirmed_email boolean DEFAULT false NOT NULL,
     has_signed_contract boolean DEFAULT false NOT NULL,
     has_accepted_useterms boolean DEFAULT false NOT NULL,
-    notification_method character varying -- can be email or a instant messenger
+    notification_method character varying -- can be email or a instant messanger
 )
 INHERITS (standardtable);
 
@@ -607,15 +607,13 @@ COMMENT ON DOMAIN ipprotocol IS '0..TCP
 --
 
 CREATE TABLE services (
-    device_id bigint NOT NULL,
     ip_id bigint NOT NULL,
     port smallint NOT NULL,
     name character varying NOT NULL,
-    description character varying,
     url character varying,
     isactive boolean DEFAULT false NOT NULL,
+    info character varying,
     protocol ipprotocol NOT NULL
-    visible boolean DEFAULT true NOT NULL,
 )
 INHERITS (standardtable);
 

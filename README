@@ -4,5 +4,7 @@ web page: http://interop.wlan-si.net/
 Author: aaron 
 Date: 2011/4/25
 
-
-
+EXISTINGS-DBS
+----------------
+In the directory existing_dbs/ you will find shemas and analysis of existing free wifi databases.
+The *mwb archives are EER Models of the databases for MysqlWorkbench.
