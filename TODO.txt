@@ -13,6 +13,18 @@
 
 * make the zone/network concept clearer in the DB
 
-* remove logrecords tables. Not needed. This should stay in RRD or similar. It would be overkill to have it here.
+* remove logrecords tables. Not needed. This should stay in RRD or similar (nosql DBs? redis?). It would be overkill to have it here.
 
+
+
+STeps:
+------
+1) iteration over texts
+2) get ok from people who were interviewed: complete and correct?
+3) combine DBs into cNDB
+4) differentiate between MUST/SHOULD/MAY fields and functionality
+5) API definition
+6) converting functionality : existing DB -> CNDB
+7) sample API implementation
+8) sample frontend implementation
 

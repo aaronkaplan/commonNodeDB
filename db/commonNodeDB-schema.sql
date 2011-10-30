@@ -19,10 +19,13 @@ SET escape_string_warning = off;
 -- Name: nodedb; Type: DATABASE; Schema: -; Owner: developers
 --
 
+DROP DATABASE if exists nodedb;
+
 CREATE DATABASE nodedb WITH TEMPLATE = template0 ENCODING = 'UTF8';
 
 
 ALTER DATABASE nodedb OWNER TO "developers";
+
 
 \connect nodedb
 
@@ -115,6 +118,7 @@ ALTER SEQUENCE standardtable_id_seq OWNED BY standardtable.id;
 CREATE TYPE gps AS (
 	latitude double precision,
 	longitude double precision,
+	height_sea	float
 );
 
 
@@ -130,7 +134,7 @@ CREATE TABLE addresses (
     city character varying NOT NULL,
     zip character varying NOT NULL,
     street character varying NOT NULL,
-    "position" gps NOT NULL,
+    "position" gps NOT NULL
 )
 INHERITS (standardtable);
 
@@ -155,7 +159,7 @@ CREATE TABLE antennas (
     polarization character varying, -- horizontal, vertical, circular right hand, circular left hand
     azimuth float NOT NULL,
     inclination float ,
-	height double precision -- above sea level
+	height double precision -- above ground
 )
 INHERITS (standardtable);
 
@@ -171,11 +175,14 @@ ALTER TABLE implementation.antennas OWNER TO "developers";
 --
 -- Name: links; Type: TABLE; Schema: implementation; Owner: developers; Tablespace: 
 --
+-- note: this table stores undirectional links and gives it a time stamp.
+--    this table needs to be purged from time to time
 CREATE TABLE links (
-  lq  float,
-  snr float,
+  lq  float,	-- some abstract link quality metric. Needs to be adapted to the specific metric in use
+  snr float,	-- singal noise ratio of the radio 
   a   bigint NOT NULL,  -- references interface_id
-  b   bigint NOT NULL   -- references interface_id
+  b   bigint NOT NULL,  -- references interface_id
+  at  timestamp with time zone
 ) 
 INHERITS (standardtable);
 
@@ -288,10 +295,12 @@ CREATE TABLE devicetypes (
     model character varying NOT NULL,
     revision character varying NOT NULL,
     manufacturer_id bigint NOT NULL,
-	mac_addr_prefix macaddr	-- XXX needed?
+	mac_addr_prefix macaddr,	-- XXX needed?
+	troubleticket_id	character varying	-- COMMONT
 )
 INHERITS (standardtable);
 
+COMMENT ON COLUMN devicetypes.troubleticket_id IS 'in case you are running a troubleticket system, keep a link to this device type describing any issues you had with it';
 
 ALTER TABLE implementation.devicetypes OWNER TO "developers";
 
@@ -325,8 +334,7 @@ ALTER TABLE implementation.antennatypes OWNER TO "developers";
 --
 
 -- should we not have an enum for that?
-CREATE DOMAIN interfacemode AS smallint NOT NULL
-	CONSTRAINT interfacemode_check CHECK (((VALUE >= 0) AND (VALUE <= 3)));
+CREATE DOMAIN interfacemode AS smallint NOT NULL CONSTRAINT interfacemode_check CHECK (((VALUE >= 0) AND (VALUE <= 3)));
 
 
 ALTER DOMAIN implementation.interfacemode OWNER TO "developers";
@@ -342,8 +350,7 @@ COMMENT ON DOMAIN interfacemode IS '
 3.client (station)
 ';
 
-CREATE DOMAIN instant_messenger AS smallint NOT NULL
-	CONSTRAINT instant_messenger_check CHECK (((VALUE >=0) AND (VALUE <= 5)));
+CREATE DOMAIN instant_messenger AS smallint NOT NULL CONSTRAINT instant_messenger_check CHECK (((VALUE >=0) AND (VALUE <= 5)));
 
 COMMENT ON DOMAIN instant_messenger IS '
 0..jabber
@@ -358,8 +365,7 @@ COMMENT ON DOMAIN instant_messenger IS '
 -- Name: macprotocol; Type: DOMAIN; Schema: implementation; Owner: developers
 --
 
-CREATE DOMAIN macprotocol AS smallint NOT NULL
-	CONSTRAINT macprotocol_check CHECK (((VALUE >= 0) AND (VALUE <= 1)));
+CREATE DOMAIN macprotocol AS smallint NOT NULL CONSTRAINT macprotocol_check CHECK (((VALUE >= 0) AND (VALUE <= 1)));
 
 
 ALTER DOMAIN implementation.macprotocol OWNER TO "developers";
@@ -522,7 +528,7 @@ CREATE TABLE person (
 	instant_messenger_id instant_messenger DEFAULT 3,
     instant_messenger_nick character varying,
     homepage character varying,
-	mentor_person bigint,  -- who is the mentor for that guy?
+	mentor_person_id bigint,  -- who is the mentor for that guy?
     has_confirmed_email boolean DEFAULT false NOT NULL,
     has_signed_contract boolean DEFAULT false NOT NULL,
     has_accepted_useterms boolean DEFAULT false NOT NULL,
@@ -598,8 +604,7 @@ ALTER DOMAIN implementation.ipprotocol OWNER TO "developers";
 -- Name: DOMAIN ipprotocol; Type: COMMENT; Schema: implementation; Owner: developers
 --
 
-COMMENT ON DOMAIN ipprotocol IS '0..TCP
-1..UDP';
+COMMENT ON DOMAIN ipprotocol IS '6..TCP 17..UDP. See also: http://www.iana.org/assignments/protocol-numbers/protocol-numbers.xml';
 
 
 --
@@ -614,8 +619,8 @@ CREATE TABLE services (
     description character varying,
     url character varying,
     isactive boolean DEFAULT false NOT NULL,
-    protocol ipprotocol NOT NULL
-    visible boolean DEFAULT true NOT NULL,
+    protocol ipprotocol NOT NULL,
+    visible boolean DEFAULT true NOT NULL
 )
 INHERITS (standardtable);
 
@@ -872,7 +877,7 @@ ALTER TABLE ONLY devicetypes
 --
 
 ALTER TABLE ONLY ips
-    ADD CONSTRAINT unique_ips UNIQUE ("cidr");
+    ADD CONSTRAINT unique_ips UNIQUE ("ip");
 
 
 --
@@ -1197,6 +1202,43 @@ BEGIN
 END;
 ';
 
+-- 
+-- API stuff
+--
+
+-- returns true if node_id_1 and node_id_2 are connected somehow via any link
+-- parameters:
+--    node_1 .... from 
+--    node_2 .... to
+--    at_time.... usually the current time. But it could be any time in the past.
+--    time_prec.. time precision of at_time. Measured in seconds . Thus: at_time
+--                +/- time_prec (seconds) is the  window which will be looked at.
+--                If the nodes where connected during this time, the function returns true 
+--                defaults to 5 minutes (300 sec)
+--    undirected.. check if node_1 could see node_2 or the other way round (does not matter)
+--
+create or replace function implementation.nodes_are_connected(node_1 bigint, node_2 bigint, at_time timestamp with time zone, time_prec int, undirected bool) RETURNS bool  AS $$
+DECLARE
+	_at_time	timestamp with time zone DEFAULT coalesce(at_time, now()); 
+	_time_prec	int DEFAULT coalesce(time_prec, 300); 
+	_unidir		bool DEFAULT coalesce(undirected, true); 
+BEGIN
+	return true;
+EXCEPTION
+	WHEN OTHERS THEN
+		raise exception 'error %', SQLERRM;
+		return false;
+END; 
+$$
+LANGUAGE plpgsql;
+
+
+create or replace function implementation.nodes_get_etx(node_1 bigint, node_2 bigint, at_time timestamp with time zone, time_prec int, undirected bool) returns float as $$
+BEGIN
+	return 0.5;
+END;
+$$
+LANGUAGE plpgsql;
 
 CREATE TRIGGER changed BEFORE UPDATE ON standardtable FOR EACH ROW EXECUTE PROCEDURE changed()	;
 CREATE TRIGGER created BEFORE INSERT ON standardtable FOR EACH ROW EXECUTE PROCEDURE created()	;
